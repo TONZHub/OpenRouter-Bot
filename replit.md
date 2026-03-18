@@ -48,6 +48,19 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 - `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 
+## Discord Bot
+
+The bot is located at `artifacts/discord-bot`. It:
+- Uses the `openrouter/hunter-alpha` model via Replit AI Integrations (no personal API key needed)
+- Responds only when @mentioned in a channel (or in DMs)
+- Maintains per-channel conversation history (last 20 messages)
+- Has two slash commands:
+  - `/mireo <message>` — speak with Mireo // Silt
+  - `/clearmemory` — clear the conversation history for the current channel
+- The full system prompt lives in `artifacts/discord-bot/src/systemPrompt.ts`
+- Run via: `pnpm --filter @workspace/discord-bot run dev`
+- Requires: `DISCORD_BOT_TOKEN`, `AI_INTEGRATIONS_OPENROUTER_BASE_URL`, `AI_INTEGRATIONS_OPENROUTER_API_KEY`
+
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)
