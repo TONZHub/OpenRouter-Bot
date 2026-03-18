@@ -29,6 +29,8 @@ if (!process.env.DISCORD_BOT_TOKEN) {
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 
+const processedMessages = new Set<string>();
+
 const commands = [
   new SlashCommandBuilder()
     .setName("mireo")
@@ -68,6 +70,10 @@ client.once("ready", async (readyClient) => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
+
+  if (processedMessages.has(message.id)) return;
+  processedMessages.add(message.id);
+  setTimeout(() => processedMessages.delete(message.id), 60_000);
 
   const mentioned =
     message.mentions.has(client.user!) ||
