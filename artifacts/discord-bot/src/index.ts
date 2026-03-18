@@ -11,6 +11,7 @@ import {
 import OpenAI from "openai";
 import { SYSTEM_PROMPT } from "./systemPrompt.js";
 import { getHistory, addMessage, clearHistory } from "./conversation.js";
+import { claimMessage } from "./responseLock.js";
 
 if (!process.env.OPENROUTER_API_KEY) {
   throw new Error("OPENROUTER_API_KEY must be set.");
@@ -28,8 +29,6 @@ if (!process.env.DISCORD_BOT_TOKEN) {
 }
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
-
-const processedMessages = new Set<string>();
 
 const commands = [
   new SlashCommandBuilder()
@@ -70,10 +69,7 @@ client.once("ready", async (readyClient) => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-
-  if (processedMessages.has(message.id)) return;
-  processedMessages.add(message.id);
-  setTimeout(() => processedMessages.delete(message.id), 60_000);
+  if (!claimMessage(message.id)) return;
 
   const mentioned =
     message.mentions.has(client.user!) ||
