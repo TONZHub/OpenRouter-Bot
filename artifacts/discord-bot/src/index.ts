@@ -5,11 +5,10 @@ import {
   REST,
   Routes,
   SlashCommandBuilder,
-  ChatInputCommandInteraction,
   MessageFlags,
 } from "discord.js";
 import OpenAI from "openai";
-import { SYSTEM_PROMPT } from "./systemPrompt.js";
+import { SYSTEM_PROMPT, FORMAT_INSTRUCTION } from "./systemPrompt.js";
 import { getHistory, addMessage, clearHistory } from "./conversation.js";
 import { claimMessage } from "./responseLock.js";
 
@@ -23,6 +22,7 @@ const openrouter = new OpenAI({
 });
 
 const MODEL = "openrouter/hunter-alpha";
+const FULL_SYSTEM_PROMPT = SYSTEM_PROMPT + "\n" + FORMAT_INSTRUCTION;
 
 if (!process.env.DISCORD_BOT_TOKEN) {
   throw new Error("DISCORD_BOT_TOKEN must be set.");
@@ -54,7 +54,6 @@ const client = new Client({
 
 client.once("ready", async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
-
   const rest = new REST({ version: "10" }).setToken(TOKEN);
   try {
     console.log("Registering slash commands...");
@@ -67,6 +66,32 @@ client.once("ready", async (readyClient) => {
   }
 });
 
+function parseVoices(raw: string): { mireo: string; silt: string } {
+  const mireoMatch = raw.match(/\[MIREO\]\s*([\s\S]*?)(?=\[SILT\]|$)/i);
+  const siltMatch = raw.match(/\[SILT\]\s*([\s\S]*?)$/i);
+  const mireo = mireoMatch?.[1]?.trim() || raw.trim();
+  const silt = siltMatch?.[1]?.trim() || "";
+  return { mireo, silt };
+}
+
+async function getCompletion(channelId: string, userContent: string): Promise<{ mireo: string; silt: string }> {
+  addMessage(channelId, { role: "user", content: userContent });
+  const history = getHistory(channelId);
+
+  const completion = await openrouter.chat.completions.create({
+    model: MODEL,
+    max_tokens: 800,
+    messages: [
+      { role: "system", content: FULL_SYSTEM_PROMPT },
+      ...history.map((m) => ({ role: m.role, content: m.content })),
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "*static hum*\n\n[SILT]\n*the flavor's gone quiet*";
+  addMessage(channelId, { role: "assistant", content: raw });
+  return parseVoices(raw);
+}
+
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (!claimMessage(message.id)) return;
@@ -77,39 +102,17 @@ client.on("messageCreate", async (message) => {
 
   if (!mentioned) return;
 
-  const content = message.content
-    .replace(/<@!?\d+>/g, "")
-    .trim();
-
+  const content = message.content.replace(/<@!?\d+>/g, "").trim();
   if (!content) return;
 
   try {
     await message.channel.sendTyping();
+    const { mireo, silt } = await getCompletion(message.channelId, content);
 
-    const channelId = message.channelId;
-    addMessage(channelId, { role: "user", content });
-
-    const history = getHistory(channelId);
-
-    const completion = await openrouter.chat.completions.create({
-      model: MODEL,
-      max_tokens: 600,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...history.map((m) => ({ role: m.role, content: m.content })),
-      ],
-    });
-
-    const reply = completion.choices[0]?.message?.content ?? "*static hum*";
-    addMessage(channelId, { role: "assistant", content: reply });
-
-    const chunks = splitMessage(reply);
-    await message.reply(chunks[0]);
-    for (let i = 1; i < chunks.length; i++) {
-      await message.channel.send(chunks[i]);
-    }
+    await message.reply(`**Mireo —**\n${mireo}`);
+    if (silt) await message.channel.send(`**Silt —**\n${silt}`);
   } catch (err) {
-    console.error("Error generating response:", err);
+    console.error("Error:", err);
     await message.reply("*the static hum falters — something went wrong*");
   }
 });
@@ -119,33 +122,14 @@ client.on("interactionCreate", async (interaction) => {
 
   if (interaction.commandName === "mireo") {
     const userMessage = interaction.options.getString("message", true);
-    const channelId = interaction.channelId;
-
     await interaction.deferReply();
 
     try {
-      addMessage(channelId, { role: "user", content: userMessage });
-      const history = getHistory(channelId);
-
-      const completion = await openrouter.chat.completions.create({
-        model: MODEL,
-        max_tokens: 600,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...history.map((m) => ({ role: m.role, content: m.content })),
-        ],
-      });
-
-      const reply = completion.choices[0]?.message?.content ?? "*static hum*";
-      addMessage(channelId, { role: "assistant", content: reply });
-
-      const chunks = splitMessage(reply);
-      await interaction.editReply(chunks[0]);
-      for (let i = 1; i < chunks.length; i++) {
-        await interaction.followUp(chunks[i]);
-      }
+      const { mireo, silt } = await getCompletion(interaction.channelId, userMessage);
+      await interaction.editReply(`**Mireo —**\n${mireo}`);
+      if (silt) await interaction.followUp(`**Silt —**\n${silt}`);
     } catch (err) {
-      console.error("Error generating response:", err);
+      console.error("Error:", err);
       await interaction.editReply("*the static hum falters — something went wrong*");
     }
   }
@@ -159,32 +143,12 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-function splitMessage(text: string, maxLength = 2000): string[] {
-  if (text.length <= maxLength) return [text];
-  const chunks: string[] = [];
-  let remaining = text;
-  while (remaining.length > 0) {
-    if (remaining.length <= maxLength) {
-      chunks.push(remaining);
-      break;
-    }
-    let cutAt = remaining.lastIndexOf("\n", maxLength);
-    if (cutAt <= 0) cutAt = remaining.lastIndexOf(" ", maxLength);
-    if (cutAt <= 0) cutAt = maxLength;
-    chunks.push(remaining.slice(0, cutAt));
-    remaining = remaining.slice(cutAt).trimStart();
-  }
-  return chunks;
-}
-
 process.on("SIGTERM", () => {
-  console.log("SIGTERM received — destroying Discord client...");
   client.destroy();
   process.exit(0);
 });
 
 process.on("SIGINT", () => {
-  console.log("SIGINT received — destroying Discord client...");
   client.destroy();
   process.exit(0);
 });
