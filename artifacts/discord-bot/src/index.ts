@@ -69,13 +69,9 @@ client.once("ready", async (readyClient) => {
 });
 
 client.on("messageCreate", async (message) => {
-  console.log(`[messageCreate] id=${message.id} author=${message.author.tag} bot=${message.author.bot}`);
   if (message.author.bot) return;
 
-  if (processedMessages.has(message.id)) {
-    console.log(`[messageCreate] DUPLICATE skipped id=${message.id}`);
-    return;
-  }
+  if (processedMessages.has(message.id)) return;
   processedMessages.add(message.id);
   setTimeout(() => processedMessages.delete(message.id), 60_000);
 
@@ -83,7 +79,6 @@ client.on("messageCreate", async (message) => {
     message.mentions.has(client.user!) ||
     (message.channel.isDMBased() && !message.author.bot);
 
-  console.log(`[messageCreate] mentioned=${mentioned} isDM=${message.channel.isDMBased()}`);
   if (!mentioned) return;
 
   const content = message.content
@@ -92,7 +87,6 @@ client.on("messageCreate", async (message) => {
 
   if (!content) return;
 
-  console.log(`[messageCreate] processing message id=${message.id}`);
   try {
     await message.channel.sendTyping();
 
@@ -114,7 +108,6 @@ client.on("messageCreate", async (message) => {
     addMessage(channelId, { role: "assistant", content: reply });
 
     const chunks = splitMessage(reply);
-    console.log(`[messageCreate] sending ${chunks.length} chunk(s), total length=${reply.length}`);
     await message.reply(chunks[0]);
     for (let i = 1; i < chunks.length; i++) {
       await message.channel.send(chunks[i]);
@@ -126,11 +119,9 @@ client.on("messageCreate", async (message) => {
 });
 
 client.on("interactionCreate", async (interaction) => {
-  console.log(`[interactionCreate] type=${interaction.type} isChatInput=${interaction.isChatInputCommand()}`);
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === "mireo") {
-    console.log(`[interactionCreate] /mireo command fired`);
     const userMessage = interaction.options.getString("message", true);
     const channelId = interaction.channelId;
 
@@ -189,5 +180,17 @@ function splitMessage(text: string, maxLength = 2000): string[] {
   }
   return chunks;
 }
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received — destroying Discord client...");
+  client.destroy();
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received — destroying Discord client...");
+  client.destroy();
+  process.exit(0);
+});
 
 client.login(TOKEN);
