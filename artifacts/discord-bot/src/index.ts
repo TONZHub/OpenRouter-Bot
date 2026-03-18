@@ -74,8 +74,9 @@ function parseVoices(raw: string): { mireo: string; silt: string } {
   return { mireo, silt };
 }
 
-async function getCompletion(channelId: string, userContent: string): Promise<{ mireo: string; silt: string }> {
-  addMessage(channelId, { role: "user", content: userContent });
+async function getCompletion(channelId: string, userContent: string, username?: string): Promise<{ mireo: string; silt: string }> {
+  const taggedContent = username ? `[${username}]: ${userContent}` : userContent;
+  addMessage(channelId, { role: "user", content: taggedContent });
   const history = getHistory(channelId);
 
   const completion = await openrouter.chat.completions.create({
@@ -107,7 +108,7 @@ client.on("messageCreate", async (message) => {
 
   try {
     await message.channel.sendTyping();
-    const { mireo, silt } = await getCompletion(message.channelId, content);
+    const { mireo, silt } = await getCompletion(message.channelId, content, message.author.username);
 
     await message.reply(`**Mireo —**\n${mireo}`);
     if (silt) await message.channel.send(`**Silt —**\n${silt}`);
@@ -125,7 +126,7 @@ client.on("interactionCreate", async (interaction) => {
     await interaction.deferReply();
 
     try {
-      const { mireo, silt } = await getCompletion(interaction.channelId, userMessage);
+      const { mireo, silt } = await getCompletion(interaction.channelId, userMessage, interaction.user.username);
       await interaction.editReply(`**Mireo —**\n${mireo}`);
       if (silt) await interaction.followUp(`**Silt —**\n${silt}`);
     } catch (err) {
