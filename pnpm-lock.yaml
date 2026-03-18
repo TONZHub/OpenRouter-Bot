@@ -203,12 +203,12 @@ importers:
 
   artifacts/discord-bot:
     dependencies:
-      '@workspace/integrations-openrouter-ai':
-        specifier: workspace:*
-        version: link:../../lib/integrations-openrouter-ai
       discord.js:
         specifier: ^14.21.0
         version: 14.25.1
+      openai:
+        specifier: ^6.27.0
+        version: 6.31.0(ws@8.19.0)(zod@4.3.6)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

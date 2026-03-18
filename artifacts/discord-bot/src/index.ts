@@ -8,9 +8,18 @@ import {
   ChatInputCommandInteraction,
   MessageFlags,
 } from "discord.js";
-import { openrouter } from "@workspace/integrations-openrouter-ai";
+import OpenAI from "openai";
 import { SYSTEM_PROMPT } from "./systemPrompt.js";
 import { getHistory, addMessage, clearHistory } from "./conversation.js";
+
+if (!process.env.OPENROUTER_API_KEY) {
+  throw new Error("OPENROUTER_API_KEY must be set.");
+}
+
+const openrouter = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 const MODEL = "openrouter/hunter-alpha";
 
