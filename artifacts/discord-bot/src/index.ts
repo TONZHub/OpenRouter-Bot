@@ -97,7 +97,7 @@ client.on("messageCreate", async (message) => {
 
     const completion = await openrouter.chat.completions.create({
       model: MODEL,
-      max_tokens: 8192,
+      max_tokens: 600,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...history.map((m) => ({ role: m.role, content: m.content })),
@@ -108,8 +108,9 @@ client.on("messageCreate", async (message) => {
     addMessage(channelId, { role: "assistant", content: reply });
 
     const chunks = splitMessage(reply);
-    for (const chunk of chunks) {
-      await message.reply(chunk);
+    await message.reply(chunks[0]);
+    for (let i = 1; i < chunks.length; i++) {
+      await message.channel.send(chunks[i]);
     }
   } catch (err) {
     console.error("Error generating response:", err);
@@ -132,7 +133,7 @@ client.on("interactionCreate", async (interaction) => {
 
       const completion = await openrouter.chat.completions.create({
         model: MODEL,
-        max_tokens: 8192,
+        max_tokens: 600,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...history.map((m) => ({ role: m.role, content: m.content })),
