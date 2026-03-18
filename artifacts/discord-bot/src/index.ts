@@ -88,7 +88,6 @@ async function getCompletion(channelId: string, userContent: string): Promise<{ 
   });
 
   const raw = completion.choices[0]?.message?.content ?? "*static hum*\n\n[SILT]\n*the flavor's gone quiet*";
-  console.log("[raw response]", JSON.stringify(raw));
   addMessage(channelId, { role: "assistant", content: raw });
   return parseVoices(raw);
 }
