@@ -1,3 +1,4 @@
+import http from "http";
 import {
   Client,
   GatewayIntentBits,
@@ -152,6 +153,14 @@ process.on("SIGTERM", () => {
 process.on("SIGINT", () => {
   client.destroy();
   process.exit(0);
+});
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+http.createServer((_, res) => {
+  res.writeHead(200);
+  res.end("Mireo // Silt is online.");
+}).listen(PORT, () => {
+  console.log(`Health check server listening on port ${PORT}`);
 });
 
 client.login(TOKEN);
