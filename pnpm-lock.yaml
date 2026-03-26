@@ -404,10 +404,16 @@ importers:
       openai:
         specifier: ^6.27.0
         version: 6.31.0(ws@8.19.0)(zod@4.3.6)
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
+      '@types/pg':
+        specifier: ^8.18.0
+        version: 8.18.0
       tsx:
         specifier: 'catalog:'
         version: 4.21.0

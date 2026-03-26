@@ -77,8 +77,8 @@ function parseVoices(raw: string): { mireo: string; silt: string } {
 
 async function getCompletion(channelId: string, userContent: string, username?: string): Promise<{ mireo: string; silt: string }> {
   const taggedContent = username ? `[${username}]: ${userContent}` : userContent;
-  addMessage(channelId, { role: "user", content: taggedContent });
-  const history = getHistory(channelId);
+  await addMessage(channelId, { role: "user", content: taggedContent });
+  const history = await getHistory(channelId);
 
   const completion = await openrouter.chat.completions.create({
     model: MODEL,
@@ -90,7 +90,7 @@ async function getCompletion(channelId: string, userContent: string, username?: 
   });
 
   const raw = completion.choices[0]?.message?.content ?? "*static hum*\n\n[SILT]\n*the flavor's gone quiet*";
-  addMessage(channelId, { role: "assistant", content: raw });
+  await addMessage(channelId, { role: "assistant", content: raw });
   return parseVoices(raw);
 }
 
@@ -137,7 +137,7 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (interaction.commandName === "clearmemory") {
-    clearHistory(interaction.channelId);
+    await clearHistory(interaction.channelId);
     await interaction.reply({
       content: "*the threads unravel and resettle — memory cleared for this channel*",
       flags: MessageFlags.Ephemeral,

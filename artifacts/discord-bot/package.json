@@ -9,10 +9,12 @@
   },
   "dependencies": {
     "discord.js": "^14.21.0",
-    "openai": "^6.27.0"
+    "openai": "^6.27.0",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.18.0",
     "tsx": "catalog:"
   }
 }
